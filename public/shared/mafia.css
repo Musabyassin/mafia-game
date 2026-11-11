@@ -1,0 +1,68 @@
+/* لعبة المافيا — الهوية المشتركة: مدينة ليلية، ذهبي وأحمر مافيا */
+:root{
+  --bg:#0d1020; --bg2:#141830; --surface:#1b1f3a; --surface2:#262b4d; --line:#363c66;
+  --ink:#f2f0e6; --muted:#a7aad0; --accent:#e8b33c; --accent-fg:#1a1405;
+  --red:#e0453a; --green:#3ec97e; --blue:#4da3ff; --purple:#a678ff;
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+  --f:'IBM Plex Sans Arabic',system-ui,'Segoe UI',Tahoma,sans-serif;
+  --f-display:'Reem Kufi','IBM Plex Sans Arabic',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:radial-gradient(1200px 700px at 80% -10%,#232a5e 0%,var(--bg) 55%);color:var(--ink);font-family:var(--f);min-height:100vh}
+button{font-family:inherit}
+.btn{display:block;width:100%;padding:13px 16px;margin-top:10px;border-radius:12px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);font-size:16px;font-weight:700;cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.danger{background:var(--red);border-color:var(--red);color:#fff}
+.btn.sm{width:auto;display:inline-block;padding:7px 12px;margin:0;font-size:13px}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:active{transform:scale(.98)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:10px;box-shadow:var(--shadow)}
+.muted{color:var(--muted);font-size:14px;line-height:1.7}
+label.f{display:grid;gap:6px;font-weight:600;font-size:14px}
+input[type=text],select{width:100%;height:48px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--ink);font-family:inherit;font-size:16px;padding:0 12px}
+input.codein{font-size:26px;text-align:center;letter-spacing:.35em;font-weight:700;direction:ltr}
+.bigcode{font-family:var(--f-display);font-size:56px;text-align:center;color:var(--accent);letter-spacing:.18em;line-height:1.1}
+.avatar{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;color:#fff;font-weight:700;flex:0 0 auto;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.pitem{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line)}
+.pitem:last-child{border-bottom:0}
+.pitem small{color:var(--muted);margin-inline-start:auto}
+.plist{display:grid}
+.tag{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--surface2);color:var(--muted);white-space:nowrap}
+.tag.red{background:var(--red);color:#fff}
+.tag.gold{background:var(--accent);color:var(--accent-fg);font-weight:700}
+.opts{display:grid;gap:10px;font-size:14px}
+.opts label{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.opts select{width:auto;height:38px;font-size:14px}
+#toasts{position:fixed;inset-inline:0;top:14px;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:60;pointer-events:none;padding:0 12px}
+.toast{background:var(--accent);color:var(--accent-fg);padding:10px 20px;border-radius:99px;font-weight:700;box-shadow:var(--shadow);animation:tin .25s;max-width:92vw;text-align:center}
+@keyframes tin{from{transform:translateY(-10px);opacity:0}}
+#conn{position:fixed;top:0;inset-inline:0;z-index:70;background:var(--red);color:#fff;text-align:center;font-size:13px;padding:5px}
+#modal{position:fixed;inset:0;z-index:55;background:rgba(4,6,16,.7);display:flex;align-items:flex-end;justify-content:center}
+#modal[hidden]{display:none}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:560px;max-height:86vh;overflow:auto;display:grid;gap:10px}
+.rolecard{border-radius:16px;padding:16px;text-align:center;border:2px solid var(--line);background:var(--bg2)}
+.rolecard .ric{font-size:52px;line-height:1.1}
+.rolecard .rn{font-family:var(--f-display);font-size:30px;margin:2px 0}
+.rolecard.mafia{border-color:var(--red);box-shadow:0 0 0 3px rgba(224,69,58,.25)}
+.rolecard.doctor{border-color:var(--green)} .rolecard.detective{border-color:var(--blue)}
+.phasebanner{border-radius:14px;padding:12px 14px;text-align:center;font-weight:700;font-size:17px;border:1px solid var(--line);background:var(--surface)}
+.phasebanner.night{background:#101736;border-color:#2c3a7a}
+.phasebanner.day{background:#2e2410;border-color:#6b5518}
+.phasebanner.vote{background:#33131a;border-color:#7a2436}
+.timerbar{height:8px;border-radius:99px;background:var(--surface2);overflow:hidden}
+.timerbar i{display:block;height:100%;background:var(--accent);transition:width 1s linear}
+.tgrid{display:grid;gap:8px}
+.tbtn{display:flex;align-items:center;gap:10px;width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:16px;font-weight:600;cursor:pointer;text-align:start}
+.tbtn.sel{border-color:var(--accent);background:var(--surface2);box-shadow:0 0 0 2px rgba(232,179,60,.35)}
+.tbtn:disabled{opacity:.45;cursor:default}
+.logbox{display:grid;gap:7px;font-size:14px;line-height:1.65}
+.logbox div{padding:8px 10px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.chatlist{display:grid;gap:8px;align-content:start;overflow:auto;padding:2px}
+.cmsg{max-width:86%;padding:8px 12px;border-radius:14px;background:var(--surface2);line-height:1.55;font-size:15px;justify-self:start}
+.cmsg.me{background:#3a3f74;justify-self:end}
+.cmsg small{display:block;color:var(--muted);font-size:11px;margin-bottom:2px}
+.cmsg.ch-mafia{border:1px solid var(--red)} .cmsg.ch-dead{opacity:.75;border:1px dashed var(--muted)}
+.chatbar{display:flex;gap:8px}
+.chatbar input{flex:1}
+.chatbar button{flex:0 0 auto;width:auto;margin:0;padding:0 18px}
