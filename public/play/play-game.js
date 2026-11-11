@@ -1,7 +1,7 @@
 /* شاشات اللعب على الهاتف: الدور السري، أفعال الليل، النقاش، التصويت، الشات، السجل، الإعدادات */
 (() => {
 'use strict';
-const App = window.App, $ = App.$, esc = App.esc, COLORS = App.COLORS, store = App.store;
+const App = window.App, $ = App.$, esc = App.esc, COLORS = App.COLORS, store = App.store, CHARS = App.CHARS;
 const ROLE = {
   mafia: { n: 'مافيا', ic: '🔪', desc: 'اختر ضحية كل ليلة مع فريقك، وتخفَّ في النقاش نهاراً. تفوز إذا صار عدد المافيا مساوياً للأبرياء أو أكثر.' },
   doctor: { n: 'طبيب', ic: '💉', desc: 'اختر لاعباً لحمايته كل ليلة (يمكنك حماية نفسك، لكن ليس نفس الشخص ليلتين متتاليتين).' },
@@ -31,12 +31,12 @@ function playersList(S, opts) {
   return `<div class="tgrid">${S.players.map((p) => {
     const r = p.role ? ROLE[p.role] : null;
     let st = '';
-    if (!p.alive) st = '💀' + (r ? ' كان ' + r.ic + ' ' + r.n : '');
+    if (!p.alive) st = '<span class="stamp">مات</span> ' + (r ? 'كان ' + r.ic + ' ' + r.n : '');
     else if (S.phase === 'vote') st = p.voted ? '✔ صوّت' : '...';
     else if (S.phase === 'day') st = p.ready ? '✔ جاهز' : '';
     const sel = opts.selected === p.id ? ' sel' : '';
     const dis = opts.disabled || !p.alive || p.id === (opts.exceptSelf ? S.me.id : -99);
-    const inner = `<span class="avatar" style="background:${COLORS[p.id]}">${esc(p.name.slice(0, 1))}</span><span style="flex:1">${esc(p.name)}${p.bot ? ' 🤖' : ''}${S.me && p.id === S.me.id ? ' (أنت)' : ''}${r && p.alive ? ` — ${r.ic} ${r.n}` : ''}</span><small class="muted">${st}</small>`;
+    const inner = `<span class="avatar charf" style="background:${COLORS[p.id]}">${CHARS[p.id] || '🧑'}</span><span style="flex:1">${esc(p.name)}${p.bot ? ' 🤖' : ''}${S.me && p.id === S.me.id ? ' (أنت)' : ''}${r && p.alive ? ` — ${r.ic} ${r.n}` : ''}</span><small class="muted">${st}</small>`;
     if (opts.action) return `<button class="tbtn${sel}" data-act="${opts.action}" data-id="${p.id}" ${dis ? 'disabled' : ''}>${inner}</button>`;
     return `<div class="tbtn" style="cursor:default">${inner}</div>`;
   }).join('')}</div>`;
@@ -58,13 +58,20 @@ function gameView() {
       ${!me.alive ? '<div style="margin-top:6px"><b>💀 أنت ميت</b> — ترى كل الأدوار الآن، وتراقب حتى النهاية. شاتك خاص بالأموات.</div>' : ''}</div>`;
   } else h += `<div class="rolecard"><div class="ric">👁</div><div class="rn">مشاهد</div><div class="muted">تتابع اللعبة دون مقعد لعب. الأدوار تبقى سرية عنك حتى يموت أصحابها أو تنتهي اللعبة.</div></div>`;
   /* شريط المرحلة والمؤقت */
-  h += `<div class="${ph[2]}">${ph[0]} ${ph[1]} — الجولة ${S.round}${S.over ? '' : ` · <span id="ttext"></span>`}</div>`;
+  h += `<div class="${ph[2]}"><span class="floaty">${ph[0]}</span> ${ph[1]} — الجولة ${S.round}${S.over ? '' : ` · <span id="ttext"></span>`}</div>`;
   if (!S.over) h += `<div class="timerbar"><i id="tfill"></i></div>`;
-  if (S.lastNight && S.phase !== 'night') h += `<div class="card" style="text-align:center"><b>${S.lastNight.died !== null && S.lastNight.died !== undefined ? `💀 ضحية الليلة ${S.lastNight.round}: ${esc(S.players[S.lastNight.died].name)}` : `🕊 الليلة ${S.lastNight.round}: ${S.lastNight.saved ? 'الطبيب أنقذ الضحية!' : 'لا قتلى'}`}</b></div>`;
+  if (S.lastNight && S.phase !== 'night') h += `<div class="card anim-in" style="text-align:center"><b>${S.lastNight.died !== null && S.lastNight.died !== undefined ? `💀 ضحية الليلة ${S.lastNight.round}: ${esc(S.players[S.lastNight.died].name)}` : `🕊 الليلة ${S.lastNight.round}: ${S.lastNight.saved ? 'الطبيب أنقذ الضحية!' : 'لا قتلى'}`}</b></div>`;
+
+  if (S.voteTally && S.voteTally.counts && S.phase !== 'vote') {
+    const rows = Object.entries(S.voteTally.counts).map(([id, c]) => ({ id: +id, c })).sort((a, b) => b.c - a.c);
+    const max = Math.max(1, ...rows.map((r) => r.c));
+    h += `<div class="card anim-in"><b>🗳️ نتيجة آخر تصويت</b><div class="tally">${rows.map((r) => `<div class="trow ${S.voteTally.out === r.id ? 'out' : ''}"><span class="nm">${CHARS[r.id] || ''} ${esc(S.players[r.id].name)}${S.voteTally.out === r.id ? ' — أُقصي' : ''}</span><span class="track"><span class="fill" style="width:${Math.round(r.c / max * 100)}%"></span></span><span class="cnt">${r.c}</span></div>`).join('')}${S.voteTally.abstain ? `<div class="muted">امتنع ${S.voteTally.abstain} عن التصويت</div>` : ''}</div></div>`;
+  }
 
   /* منطقة الفعل */
   if (S.over) {
-    h += `<div class="card" style="text-align:center"><div style="font-size:44px">${S.winner === 'town' ? '🏆' : '🔪'}</div><b style="font-size:20px">${S.winner === 'town' ? 'فاز الأبرياء!' : 'فازت المافيا!'}</b><span class="muted">انكشفت كل الأدوار في القائمة بالأسفل.</span>${App.st.host ? '<button class="btn primary" id="again">لعبة جديدة (عودة للردهة)</button>' : '<span class="muted">بانتظار المضيف لبدء لعبة جديدة...</span>'}</div>`;
+    const confetti = Array.from({ length: 16 }, (_, i) => `<i style="left:${(i * 61) % 100}%;background:${['#e8b33c', '#e0453a', '#3ec97e', '#4da3ff', '#a678ff'][i % 5]};animation-duration:${2.6 + (i % 5) * 0.5}s;animation-delay:${(i % 7) * 0.35}s"></i>`).join('');
+    h += `<div class="card" style="text-align:center;position:relative;overflow:hidden"><div class="confetti">${confetti}</div><div style="font-size:44px">${S.winner === 'town' ? '🏆' : '🔪'}</div><b style="font-size:20px">${S.winner === 'town' ? 'فاز الأبرياء!' : 'فازت المافيا!'}</b><span class="muted">انكشفت كل الأدوار في القائمة بالأسفل.</span>${App.st.host ? '<button class="btn primary" id="again">لعبة جديدة (عودة للردهة)</button>' : '<span class="muted">بانتظار المضيف لبدء لعبة جديدة...</span>'}</div>`;
   } else if (spec) {
     h += `<div class="card" style="text-align:center"><span class="muted">وضع المشاهدة — اللاعبون يتحركون من هواتفهم.</span></div>`;
   } else if (!me.alive) {
@@ -74,16 +81,16 @@ function gameView() {
     if (me.role === 'citizen') h += `<div class="card" style="text-align:center"><div style="font-size:40px">😴</div><b>أنت نائم...</b><span class="muted">المافيا والطبيب والمحقق يتحركون الآن سراً. انتظر الصباح.</span></div>`;
     else {
       const labels = { mafia: '🔪 اختر ضحية المافيا الليلة', doctor: '💉 اختر من تحميه الليلة', detective: '🔎 اختر من تتحقق منه الليلة' };
-      h += `<div class="card"><b>${labels[me.role]}</b>${me.role === 'mafia' && ns.mafiaVotes && ns.mafiaVotes.length ? `<span class="muted">أصوات فريقك حتى الآن: ${ns.mafiaVotes.map((v) => `${esc(S.players[v.by].name)} ← ${esc(S.players[v.target].name)}`).join('، ')}</span>` : ''}${me.role === 'doctor' && me.lastSave !== null && me.lastSave !== undefined ? `<span class="muted">حميتَ البارحة: ${esc(S.players[me.lastSave].name)} — لا يمكنك حمايته الليلة أيضاً.</span>` : ''}`;
+      h += `<div class="card ${ns.acted ? '' : 'act-now'}"><b>${labels[me.role]}</b>${me.role === 'mafia' && ns.mafiaVotes && ns.mafiaVotes.length ? `<span class="muted">أصوات فريقك حتى الآن: ${ns.mafiaVotes.map((v) => `${esc(S.players[v.by].name)} ← ${esc(S.players[v.target].name)}`).join('، ')}</span>` : ''}${me.role === 'doctor' && me.lastSave !== null && me.lastSave !== undefined ? `<span class="muted">حميتَ البارحة: ${esc(S.players[me.lastSave].name)} — لا يمكنك حمايته الليلة أيضاً.</span>` : ''}`;
       const targets = S.players.filter((p) => p.alive && (me.role === 'doctor' ? true : p.id !== me.id) && (me.role === 'mafia' ? p.role !== 'mafia' : true));
-      h += `<div class="tgrid">${targets.map((p) => `<button class="tbtn ${ns.myTarget === p.id ? 'sel' : ''}" data-night="${p.id}"><span class="avatar" style="background:${COLORS[p.id]}">${esc(p.name.slice(0, 1))}</span><span style="flex:1">${esc(p.name)}${p.bot ? ' 🤖' : ''}</span>${ns.myTarget === p.id ? '<small>✔ اختيارك</small>' : ''}</button>`).join('')}</div>`;
+      h += `<div class="tgrid">${targets.map((p) => `<button class="tbtn ${ns.myTarget === p.id ? 'sel' : ''}" data-night="${p.id}"><span class="avatar charf" style="background:${COLORS[p.id]}">${CHARS[p.id] || '🧑'}</span><span style="flex:1">${esc(p.name)}${p.bot ? ' 🤖' : ''}</span>${ns.myTarget === p.id ? '<small>✔ اختيارك</small>' : ''}</button>`).join('')}</div>`;
       h += ns.acted ? '<span class="muted">✔ تم تسجيل اختيارك — يمكنك تغييره حتى ينتهي الليل. بانتظار بقية الأدوار...</span>' : '<span class="muted">اختر هدفك قبل انتهاء المؤقت.</span>';
       h += '</div>';
     }
   } else if (S.phase === 'day') {
-    h += `<div class="card"><b>💬 وقت النقاش</b><span class="muted">ناقشوا بصوت عالٍ إن كنتم معاً، أو في تبويب الشات. اتهموا وبرروا... وعندما تنتهون اضغط الزر.</span>${S.myReady ? '<span class="muted">✔ أنت جاهز — بانتظار البقية.</span>' : '<button class="btn primary" id="ready">جاهز للتصويت 🗳️</button>'}</div>`;
+    h += `<div class="card ${S.myReady ? '' : 'act-now'}"><b>💬 وقت النقاش</b><span class="muted">ناقشوا بصوت عالٍ إن كنتم معاً، أو في تبويب الشات. اتهموا وبرروا... وعندما تنتهون اضغط الزر.</span>${S.myReady ? '<span class="muted">✔ أنت جاهز — بانتظار البقية.</span>' : '<button class="btn primary" id="ready">جاهز للتصويت 🗳️</button>'}</div>`;
   } else if (S.phase === 'vote') {
-    h += `<div class="card"><b>🗳️ صوّت لإقصاء من تشتبه به</b><div class="tgrid">${S.players.filter((p) => p.alive && p.id !== me.id).map((p) => `<button class="tbtn ${S.myVote === p.id ? 'sel' : ''}" data-vote="${p.id}"><span class="avatar" style="background:${COLORS[p.id]}">${esc(p.name.slice(0, 1))}</span><span style="flex:1">${esc(p.name)}${p.bot ? ' 🤖' : ''}</span>${S.myVote === p.id ? '<small>✔ صوتك</small>' : ''}</button>`).join('')}</div><button class="btn ${S.myVote === -1 ? 'primary' : ''}" id="abstain">امتناع عن التصويت</button>${S.myVote !== null && S.myVote !== undefined ? '<span class="muted">✔ تم تسجيل صوتك — يمكنك تغييره حتى ينتهي التصويت.</span>' : ''}</div>`;
+    h += `<div class="card ${S.myVote === null || S.myVote === undefined ? 'act-now' : ''}"><b>🗳️ صوّت لإقصاء من تشتبه به</b><div class="tgrid">${S.players.filter((p) => p.alive && p.id !== me.id).map((p) => `<button class="tbtn ${S.myVote === p.id ? 'sel' : ''}" data-vote="${p.id}"><span class="avatar charf" style="background:${COLORS[p.id]}">${CHARS[p.id] || '🧑'}</span><span style="flex:1">${esc(p.name)}${p.bot ? ' 🤖' : ''}</span>${S.myVote === p.id ? '<small>✔ صوتك</small>' : ''}</button>`).join('')}</div><button class="btn ${S.myVote === -1 ? 'primary' : ''}" id="abstain">امتناع عن التصويت</button>${S.myVote !== null && S.myVote !== undefined ? '<span class="muted">✔ تم تسجيل صوتك — يمكنك تغييره حتى ينتهي التصويت.</span>' : ''}</div>`;
   }
   /* قائمة اللاعبين */
   h += `<div class="card"><b>اللاعبون (${S.players.filter((p) => p.alive).length} أحياء من ${S.players.length})</b>${playersList(S)}</div>`;

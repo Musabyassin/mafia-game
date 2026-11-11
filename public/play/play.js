@@ -11,7 +11,8 @@ const store = {
 };
 const qCode = (new URLSearchParams(location.search).get('c') || '').replace(/\D/g, '').slice(0, 4);
 let room = null; try { room = JSON.parse(store.get('mf_room') || 'null'); } catch (e) { room = null; }
-const App = window.App = { st: null, lobby: null, me: null, tab: 'game', room, root: $('#root'), $, esc, store, COLORS, chat: [], chatUnread: 0, speedV: store.get('mf_speed') || 'normal', offset: 0, lastPhase: null };
+const CHARS = ['🧑‍💼','👩‍💼','🧔','👱‍♀️','👳‍♂️','🧕','👴','👵','🕴️','👨‍🎨','👩‍🎤','🧑‍🚀'];
+const App = window.App = { CHARS, st: null, lobby: null, me: null, tab: 'game', room, root: $('#root'), $, esc, store, COLORS, chat: [], chatUnread: 0, speedV: store.get('mf_speed') || 'normal', offset: 0, lastPhase: null };
 try { if (store.get('mf_mute') === '1') Sfx.setMuted(true); } catch (e) { /* ignore */ }
 
 function send(o) { return net.send(o); }
@@ -60,6 +61,7 @@ let raf = 0;
 function render() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; paint(); }); }
 App.render = render;
 function paint() {
+  document.body.dataset.phase = App.st ? App.st.s.phase : 'lobby';
   const inGame = !!App.st, inLobby = !!App.lobby;
   $('#tabs').hidden = !inGame;
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === App.tab));
@@ -100,9 +102,10 @@ function renderLobby() {
   const link = `${location.origin}/play/?c=${L.code}`;
   App.root.innerHTML = `<div class="join"><h1 style="font-size:36px">الردهة</h1><div class="card"><div class="muted" style="text-align:center">كود الغرفة</div><div class="bigcode">${esc(L.code)}</div>
     <input type="text" id="link" readonly value="${esc(link)}" dir="ltr" style="font-size:13px;height:42px"><button class="btn sm" id="copy" style="width:100%">نسخ رابط الدعوة</button></div>
-    <div class="card"><b>اللاعبون (${L.players.length} من ${L.max} — يلزم ${L.min} على الأقل)</b><div class="plist">${L.players.map((p) => `<div class="pitem"><span class="avatar" style="background:${COLORS[p.id]}">${esc(p.name.slice(0, 1))}</span>${esc(p.name)}${p.id === L.me ? ' (أنت)' : ''}<small>${p.bot ? 'آلي' : p.host ? 'المضيف' : p.connected ? '' : 'غير متصل'}</small>${host && p.id !== L.me ? `<button class="btn sm" data-kick="${p.id}">إزالة</button>` : ''}</div>`).join('')}</div>
+    <div class="card"><b>اللاعبون (${L.players.length} من ${L.max} — يلزم ${L.min} على الأقل)</b><div class="muted">إعدادات المضيف: المافيا ${L.cfg.mafia ? '🔪 × ' + L.cfg.mafia : 'تلقائي'} · إظهار دور من يموت ${L.cfg.reveal ? '✔' : '✖'}</div><div class="plist">${L.players.map((p) => `<div class="pitem"><span class="avatar" style="background:${COLORS[p.id]}">${esc(p.name.slice(0, 1))}</span>${esc(p.name)}${p.id === L.me ? ' (أنت)' : ''}<small>${p.bot ? 'آلي' : p.host ? 'المضيف' : p.connected ? '' : 'غير متصل'}</small>${host && p.id !== L.me ? `<button class="btn sm" data-kick="${p.id}">إزالة</button>` : ''}</div>`).join('')}</div>
     ${host ? `<button class="btn" id="bot" ${full ? 'disabled' : ''}>إضافة لاعب آلي 🤖</button>
-      <div class="opts"><label>إظهار دور من يموت أو يُقصى <input type="checkbox" id="reveal" ${L.cfg.reveal ? 'checked' : ''} style="width:22px;height:22px"></label>
+      <div class="opts"><label>عدد المافيا 🔪 <select id="maf"><option value="0" ${!L.cfg.mafia ? 'selected' : ''}>تلقائي (حسب عدد اللاعبين)</option>${Array.from({ length: L.maxMafia || 1 }, (_, i) => i + 1).map((v) => `<option value="${v}" ${L.cfg.mafia === v ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+      <label>إظهار دور من يموت أو يُقصى <input type="checkbox" id="reveal" ${L.cfg.reveal ? 'checked' : ''} style="width:22px;height:22px"></label>
       <label>سرعة اللعبة <select id="spd">${[['slow', 'بطيئة'], ['normal', 'عادية'], ['fast', 'سريعة'], ['turbo', 'خاطفة']].map(([v, l]) => `<option value="${v}" ${v === App.speedV ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
       <button class="btn primary" id="start" ${enough ? '' : 'disabled'}>ابدأ اللعبة 🕵️</button>
       ${enough ? '' : '<span class="muted">يلزم 5 لاعبين على الأقل. أضف لاعبين آليين أو انتظر أصدقاءك.</span>'}`
@@ -115,7 +118,8 @@ function renderLobby() {
   if (host) {
     $('#bot').onclick = () => send({ t: 'addBot' });
     $('#start').onclick = () => send({ t: 'start' });
-    $('#reveal').onchange = () => send({ t: 'cfg', reveal: $('#reveal').checked });
+    const cfgSend = () => send({ t: 'cfg', reveal: $('#reveal').checked, mafia: +$('#maf').value });
+    $('#reveal').onchange = cfgSend; $('#maf').onchange = cfgSend;
     $('#spd').onchange = () => { App.speedV = $('#spd').value; store.set('mf_speed', App.speedV); send({ t: 'speed', v: App.speedV }); };
   }
 }

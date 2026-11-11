@@ -66,3 +66,34 @@ input.codein{font-size:26px;text-align:center;letter-spacing:.35em;font-weight:7
 .chatbar{display:flex;gap:8px}
 .chatbar input{flex:1}
 .chatbar button{flex:0 0 auto;width:auto;margin:0;padding:0 18px}
+
+/* ===== بصريات: سماء وشخصيات وأختام ونتائج ===== */
+.stars{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.25;transition:opacity 1.2s;
+  background-image:radial-gradient(2px 2px at 12% 22%,#fff 50%,transparent 51%),radial-gradient(1.6px 1.6px at 32% 8%,#ffe9a8 50%,transparent 51%),radial-gradient(2px 2px at 55% 18%,#fff 50%,transparent 51%),radial-gradient(1.5px 1.5px at 72% 30%,#cdd7ff 50%,transparent 51%),radial-gradient(2.2px 2.2px at 86% 12%,#fff 50%,transparent 51%),radial-gradient(1.4px 1.4px at 24% 42%,#fff 50%,transparent 51%),radial-gradient(1.8px 1.8px at 64% 46%,#ffe9a8 50%,transparent 51%),radial-gradient(1.5px 1.5px at 92% 40%,#fff 50%,transparent 51%),radial-gradient(1.6px 1.6px at 44% 34%,#fff 50%,transparent 51%),radial-gradient(1.3px 1.3px at 6% 55%,#cdd7ff 50%,transparent 51%);
+  animation:twinkle 3.4s ease-in-out infinite alternate}
+@keyframes twinkle{from{opacity:.12}to{opacity:.4}}
+body[data-phase="night"] .stars{opacity:.85}
+body[data-phase="day"] .stars{opacity:.05}
+body[data-phase="day"]{background:radial-gradient(1200px 700px at 80% -10%,#5e4a23 0%,#171326 55%)}
+body[data-phase="vote"]{background:radial-gradient(1200px 700px at 80% -10%,#5e2323 0%,#150f24 55%)}
+body[data-phase="ended"] .stars{opacity:.6}
+body>*{position:relative;z-index:1}
+.charf{font-size:19px;text-shadow:none}
+.stamp{display:inline-block;border:2.5px solid var(--red);color:#ff7a6e;font-weight:800;font-size:12px;padding:1px 8px;border-radius:6px;transform:rotate(-9deg);letter-spacing:.02em;animation:stampin .35s cubic-bezier(.2,2.2,.4,1);background:rgba(224,69,58,.12);white-space:nowrap}
+@keyframes stampin{from{transform:rotate(-9deg) scale(2.4);opacity:0}to{transform:rotate(-9deg) scale(1);opacity:1}}
+.act-now{animation:glowp 1.6s ease-in-out infinite}
+@keyframes glowp{0%,100%{box-shadow:0 0 0 0 rgba(232,179,60,.0)}50%{box-shadow:0 0 0 4px rgba(232,179,60,.28)}}
+.floaty{display:inline-block;animation:floaty 3.2s ease-in-out infinite}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.anim-in{animation:rise .35s ease}
+@keyframes rise{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+.tally{display:grid;gap:7px}
+.trow{display:flex;align-items:center;gap:9px;font-size:14px}
+.trow .nm{flex:0 0 34%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow .track{flex:1;height:13px;border-radius:99px;background:var(--surface2);overflow:hidden}
+.trow .fill{height:100%;background:linear-gradient(90deg,#b03a30,var(--red));border-radius:99px;transition:width .8s ease}
+.trow.out .fill{background:linear-gradient(90deg,#7d1f16,#e0453a)}
+.trow .cnt{font-weight:800;color:var(--accent);min-width:1.4em;text-align:center}
+.confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.confetti i{position:absolute;top:-4vh;width:1.1vh;height:1.9vh;border-radius:2px;opacity:.9;animation:fall linear infinite}
+@keyframes fall{to{transform:translateY(108vh) rotate(560deg)}}

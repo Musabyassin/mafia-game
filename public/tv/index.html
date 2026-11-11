@@ -58,12 +58,18 @@ body{font-size:2.1vh;cursor:none;padding:2.2vh 2.6vh}
 #win h2{font-family:var(--f-display);font-size:10vh;margin:0;color:var(--accent)}
 #win .st{display:grid;gap:1vh;min-width:52vh;font-size:2.7vh}
 #win .st div{display:flex;gap:2vh;justify-content:space-between;align-items:center;padding:1vh 2vh;background:var(--surface);border-radius:1.4vh}
+#tally:empty{display:none}
+#tally{border:1px solid var(--line);border-radius:1.6vh;background:var(--surface);padding:1.2vh 1.8vh}
+#tally .trow{font-size:2.15vh}.trow .fill{display:block}
+.pl .avatar{font-size:3vh}
 </style>
 </head>
 <body>
+<div class="stars"></div>
 <section id="lobby" hidden></section>
 <section id="game" hidden>
   <div class="phead"><div class="ph" id="phbanner"></div><div class="twrap"><div class="tbar"><i id="tfill"></i></div><div class="tm" id="ttext">--</div></div><div class="badge" id="badge"></div></div>
+  <div id="tally"></div>
   <div class="gmain">
     <div class="pgrid" id="pgrid"></div>
     <aside id="side"><div id="log"></div>
@@ -81,6 +87,7 @@ body{font-size:2.1vh;cursor:none;padding:2.2vh 2.6vh}
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const COLORS = ['#e74c3c','#3498db','#2ecc71','#b7950b','#9b59b6','#e67e22','#1abc9c','#fd79a8','#7f8c9b','#d63031','#00b894','#6c5ce7'];
+const CHARS = ['🧑‍💼','👩‍💼','🧔','👱‍♀️','👳‍♂️','🧕','👴','👵','🕴️','👨‍🎨','👩‍🎤','🧑‍🚀'];
 const ROLE = { mafia: ['🔪', 'مافيا'], doctor: ['💉', 'طبيب'], detective: ['🔎', 'محقق'], citizen: ['🧑', 'مواطن'] };
 const params = new URLSearchParams(location.search), watchCode = params.get('c');
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } } };
@@ -119,18 +126,19 @@ function paint() {
   if (err) { st.hidden = false; st.innerHTML = `<div>${esc(err)}</div><small>${watchCode ? 'تأكد من كود الغرفة ثم أعد التحميل' : ''}</small>`; }
   else if (status !== 'open') { st.hidden = false; st.innerHTML = `<div>جارٍ الاتصال بالخادم...</div><small>${esc(location.host)}</small>`; }
   else st.hidden = true;
+  document.body.dataset.phase = S ? S.phase : 'lobby';
   $('#lobby').hidden = !!S || !code; $('#game').hidden = !S;
   if (S) paintGame(); else if (code) paintLobby();
 }
 function paintLobby() {
   const pl = lobby ? lobby.players : [];
   const slots = Array.from({ length: 12 }, (_, i) => pl[i]
-    ? `<div class="slot"><span class="avatar" style="background:${COLORS[i]}">${esc(pl[i].name.slice(0, 1))}</span>${esc(pl[i].name)}<small>${pl[i].bot ? 'آلي' : pl[i].host ? 'المضيف' : pl[i].connected ? '' : 'غير متصل'}</small></div>`
+    ? `<div class="slot"><span class="avatar charf" style="background:${COLORS[i]};font-size:2.6vh">${CHARS[i] || '🧑'}</span>${esc(pl[i].name)}<small>${pl[i].bot ? 'آلي' : pl[i].host ? 'المضيف' : pl[i].connected ? '' : 'غير متصل'}</small></div>`
     : '<div class="slot empty">بانتظار لاعب...</div>').join('');
   $('#lobby').innerHTML = `<div class="hero"><h1>🕵️ المافيا</h1>
     <p>المافيا تقتل في الليل، والمدينة تناقش وتصوّت في النهار. الأدوار سرية — لا أحد يعرف دور غيره إلا من هاتفه. يلزم 5 لاعبين على الأقل (يمكن للمضيف إضافة لاعبين آليين).</p>
     <div class="codeRow">${String(code).split('').map((d) => `<b>${d}</b>`).join('')}</div>
-    <div class="how"><div>1. افتح على هاتفك <code>${esc(joinHost)}</code> أو امسح الرمز</div><div>2. أدخل كود الغرفة <b>${esc(code)}</b> واكتب اسمك</div><div>3. المضيف (أول من ينضم) يضغط «ابدأ اللعبة» من هاتفه</div></div>
+    <div class="how"><div>عدد المافيا: <b>${lobby && lobby.cfg ? (lobby.cfg.mafia ? '🔪 × ' + lobby.cfg.mafia : 'تلقائي حسب عدد اللاعبين') : 'تلقائي'}</b> — يضبطه المضيف من هاتفه قبل البدء</div><div>1. افتح على هاتفك <code>${esc(joinHost)}</code> أو امسح الرمز</div><div>2. أدخل كود الغرفة <b>${esc(code)}</b> واكتب اسمك</div><div>3. المضيف (أول من ينضم) يضغط «ابدأ اللعبة» من هاتفه</div></div>
     <div class="slots">${slots}</div></div>
     <div class="qrbox"><img src="/qr?c=${encodeURIComponent(code)}" alt="رمز QR للانضمام"><span>امسح للانضمام</span></div>`;
 }
@@ -138,7 +146,15 @@ const PH = { night: ['🌙', 'الليل', 'المافيا والطبيب وال
 function paintGame() {
   const ph = PH[S.phase] || PH.day;
   const b = $('#phbanner'); b.className = 'ph ' + S.phase;
-  b.innerHTML = `<span class="ic">${ph[0]}</span><div><b>${ph[1]} — الجولة ${S.round}</b><br><span>${esc(ph[2])}</span></div>`;
+  let sub = ph[2];
+  if ((S.phase === 'day' || S.phase === 'vote') && S.lastNight) sub = S.lastNight.died !== null && S.lastNight.died !== undefined ? `☀️ هذا الصباح: قُتل ${S.players[S.lastNight.died].name} في الليلة ${S.lastNight.round}` : `☀️ هذا الصباح: ${S.lastNight.saved ? 'الطبيب أنقذ ضحية المافيا!' : 'لا قتلى البارحة'} — ${ph[2]}`;
+  b.innerHTML = `<span class="ic floaty">${ph[0]}</span><div><b>${ph[1]} — الجولة ${S.round}</b><br><span>${esc(sub)}</span></div>`;
+  const tl = $('#tally');
+  if (S.voteTally && S.voteTally.counts && S.phase !== 'vote') {
+    const rows = Object.entries(S.voteTally.counts).map(([id, c]) => ({ id: +id, c })).sort((a, b2) => b2.c - a.c);
+    const mx = Math.max(1, ...rows.map((r) => r.c));
+    tl.innerHTML = `<div class="tally">${rows.map((r) => `<div class="trow ${S.voteTally.out === r.id ? 'out' : ''}"><span class="nm">${CHARS[r.id] || ''} ${esc(S.players[r.id].name)}${S.voteTally.out === r.id ? ' — أُقصي 🗳️' : ''}</span><span class="track"><span class="fill" style="width:${Math.round(r.c / mx * 100)}%"></span></span><span class="cnt">${r.c}</span></div>`).join('')}</div>`;
+  } else tl.innerHTML = '';
   $('#badge').innerHTML = `<b>${esc(code)}</b><img src="/qr?c=${encodeURIComponent(code)}" alt="QR">`;
   $('#pgrid').innerHTML = S.players.map((p) => {
     const role = p.role ? ROLE[p.role] : null;
@@ -147,14 +163,15 @@ function paintGame() {
     else if (S.phase === 'vote') st = p.voted ? '✔ صوّت' : 'بانتظار صوته';
     else if (S.phase === 'day') st = p.ready ? '✔ جاهز' : 'يناقش...';
     else if (S.phase === 'night') st = '😴';
-    return `<div class="pl ${p.alive ? '' : 'dead'}"><span class="avatar" style="background:${COLORS[p.id]}">${esc(p.name.slice(0, 1))}</span><div><b>${esc(p.name)}</b>${p.bot ? ' <span class="tag">آلي</span>' : ''}<small>${p.alive ? 'على قيد الحياة' : 'مات' + (role ? ' — كان ' + role[1] : '')}</small></div><span class="st">${st}</span></div>`;
+    return `<div class="pl ${p.alive ? '' : 'dead'}"><span class="avatar charf" style="background:${COLORS[p.id]}">${CHARS[p.id] || '🧑'}</span><div><b>${esc(p.name)}</b>${p.alive ? '' : ' <span class="stamp">مات</span>'}${p.bot ? ' <span class="tag">آلي</span>' : ''}<small>${p.alive ? 'على قيد الحياة' : 'مات' + (role ? ' — كان ' + role[1] : '')}</small></div><span class="st">${st}</span></div>`;
   }).join('');
   $('#log').innerHTML = S.log.slice(-9).reverse().map((l) => `<div>${esc(l)}</div>`).join('');
   $('#clist').innerHTML = chat.length ? chat.slice(-7).map((c) => `<div><b style="color:${COLORS[c.id] || 'var(--ink)'}">${esc(c.n)}:</b> ${esc(c.m)}</div>`).join('') : '<div class="empty">لا رسائل بعد — يكتب اللاعبون من تبويب «شات» في هواتفهم (نهاراً).</div>';
   const w = $('#win');
   if (S.over) {
     w.hidden = false;
-    w.innerHTML = `<small style="font-size:3vh;color:var(--muted)">${S.winner === 'town' ? 'فاز الأبرياء 🏆' : 'فازت المافيا 🔪'}</small><h2>${S.winner === 'town' ? 'المدينة تنتصر!' : 'المافيا تسيطر!'}</h2>
+    const confetti = Array.from({ length: 22 }, (_, i) => `<i style="left:${(i * 43) % 100}%;background:${['#e8b33c', '#e0453a', '#3ec97e', '#4da3ff', '#a678ff'][i % 5]};animation-duration:${2.8 + (i % 5) * 0.5}s;animation-delay:${(i % 8) * 0.3}s"></i>`).join('');
+    w.innerHTML = `<div class="confetti">${confetti}</div><small style="font-size:3vh;color:var(--muted)">${S.winner === 'town' ? 'فاز الأبرياء 🏆' : 'فازت المافيا 🔪'}</small><h2>${S.winner === 'town' ? 'المدينة تنتصر!' : 'المافيا تسيطر!'}</h2>
     <div class="st">${S.players.map((p) => { const r = ROLE[p.role]; return `<div><span><span class="avatar" style="background:${COLORS[p.id]}">${esc(p.name.slice(0, 1))}</span> ${esc(p.name)} ${p.alive ? '' : '(مات)'}</span><b>${r ? r[0] + ' ' + r[1] : ''}</b></div>`; }).join('')}</div>
     <small style="font-size:2.4vh;color:var(--muted)">يبدأ المضيف لعبة جديدة من هاتفه</small>`;
   } else w.hidden = true;

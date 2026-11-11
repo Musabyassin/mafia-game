@@ -9,15 +9,19 @@ const ROLES = {
   citizen:  { name: 'مواطن',    icon: '🧑', team: 'town',  desc: 'نام ليلاً، وناقش نهاراً، وصوّت لإقصاء من تشتبه بأنه مافيا.' },
 };
 
-/* توزيع الأدوار حسب عدد اللاعبين */
-function roleDeck(n) {
-  const table = { 4:[1,2], 5:[1,2], 6:[2,3], 7:[2,4], 8:[2,5], 9:[3,5], 10:[3,6], 11:[3,7], 12:[4,7] };
-  const [maf, cit] = table[n] || [Math.max(1, Math.round(n / 4)), n - Math.max(1, Math.round(n / 4)) - 2];
+/* الحد الأقصى المعقول للمافيا: أقل من نصف اللاعبين، ويبقى طبيب ومحقق ومواطن على الأقل */
+function maxMafia(n) { return Math.max(1, Math.min(n - 3, Math.floor((n - 1) / 2))); }
+
+/* توزيع الأدوار: تلقائي حسب العدد، أو بعدد مافيا يحدده المضيف (mafWanted) */
+function roleDeck(n, mafWanted) {
+  const table = { 4: 1, 5: 1, 6: 2, 7: 2, 8: 2, 9: 3, 10: 3, 11: 3, 12: 4 };
+  let maf = table[n] || Math.max(1, Math.round(n / 4));
+  if (Number.isInteger(mafWanted) && mafWanted >= 1) maf = mafWanted;
+  maf = Math.max(1, Math.min(maf, maxMafia(n)));
   const deck = [];
   for (let i = 0; i < maf; i++) deck.push('mafia');
   deck.push('doctor', 'detective');
-  for (let i = 0; i < cit; i++) deck.push('citizen');
-  while (deck.length > n) deck.splice(deck.lastIndexOf('citizen'), 1);
+  for (let i = 0; i < n - maf - 2; i++) deck.push('citizen');
   return deck;
 }
 
@@ -30,7 +34,7 @@ class MafiaGame {
   /* players: [{name, bot}] — cfg: {reveal:true, speed:1} — io: {update(), event(e), private(pid, obj)} */
   constructor(players, cfg, io, rnd) {
     this.io = io; this.cfg = cfg || {}; this.rnd = rnd || Math.random;
-    const deck = shuffle(roleDeck(players.length), this.rnd);
+    const deck = shuffle(roleDeck(players.length, this.cfg.mafia), this.rnd);
     this.S = {
       phase: 'night',          // night | day | vote | ended
       round: 1,
@@ -187,7 +191,7 @@ class MafiaGame {
     let top = null, best = 0, tie = false;
     count.forEach((c, t) => { if (c > best) { best = c; top = t; tie = false; } else if (c === best) tie = true; });
     const detail = [...count.entries()].map(([t, c]) => `${S.players[t].name}: ${c}`).join('، ');
-    S.voteTally = { detail, abstain, out: tie ? null : top };
+    S.voteTally = { detail, abstain, out: tie ? null : top, counts: Object.fromEntries(count) };
     if (top === null || tie || best === 0) {
       this.log(`🗳️ نتيجة التصويت (${detail || 'لا أصوات'}${abstain ? `، امتناع: ${abstain}` : ''}) — ${best === 0 ? 'لا إقصاء اليوم.' : 'تعادل! لا إقصاء اليوم.'}`);
       this.io.event({ e: 'voteResult', out: null });
@@ -292,4 +296,4 @@ class MafiaGame {
   }
 }
 
-module.exports = { MafiaGame, ROLES, roleDeck };
+module.exports = { MafiaGame, ROLES, roleDeck, maxMafia };

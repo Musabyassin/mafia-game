@@ -79,7 +79,7 @@ function actFor(c) {
   await host.waitFor(() => host.lobby && host.lobby.players.length === 6, 5000, 'bot added');
   check(host.lobby.players.length === 6, 'الردهة: 5 بشر + آلي = 6');
   host.send({ t: 'speed', v: 'turbo' });
-  host.send({ t: 'cfg', reveal: true });
+  host.send({ t: 'cfg', reveal: true, mafia: 1 });
   host.send({ t: 'start' });
   await host.waitFor(() => host.state && host.state.s, 5000, 'game start');
 
@@ -96,7 +96,7 @@ function actFor(c) {
   const mafiaC = phones.find((c) => c.state && c.state.s.me.role === 'mafia');
   if (mafiaC) {
     const mates = mafiaC.state.s.players.filter((p) => p.role === 'mafia');
-    check(mates.length === 2, 'المافيا ترى زميلها (مافيا 6 لاعبين = 2)');
+    check(mates.length === 1, 'عدد المافيا المضبوط من المضيف مطبّق (1 بدل التلقائي 2)');
     /* شات المافيا الليلي لا يصل المواطنين */
     const before = phones.map((c) => c.chatEv.length);
     mafiaC.send({ t: 'chat', m: 'خطتنا سرية' });
@@ -119,6 +119,9 @@ function actFor(c) {
     const S = endState.s;
     check(['mafia', 'town'].includes(S.winner), 'الفائز محدد: ' + S.winner);
     check(S.players.every((p) => p.role), 'بعد النهاية انكشفت كل الأدوار');
+    check(S.players.filter((p) => p.role === 'mafia').length === 1, 'العدد النهائي للمافيا = 1 كما ضُبط قبل البدء');
+    if (S.voteTally) check(S.voteTally.counts && Object.values(S.voteTally.counts).reduce((a, b) => a + b, 0) >= 1, 'نتيجة التصويت تحمل عدّاً رقمياً للأشرطة');
+    console.log('  أدوار النهاية:', S.players.map((p) => p.name + '=' + p.role).join('، '));
     const mafAlive = S.players.filter((p) => p.alive && p.role === 'mafia').length;
     const townAlive = S.players.filter((p) => p.alive && p.role !== 'mafia').length;
     check(S.winner === 'town' ? mafAlive === 0 : mafAlive >= townAlive, 'شرط الفوز متسق مع الحالة النهائية');

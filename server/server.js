@@ -6,7 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const QRCode = require('qrcode');
-const { MafiaGame } = require('./engine.js');
+const { MafiaGame, maxMafia } = require('./engine.js');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC = path.join(__dirname, '..', 'public');
@@ -53,7 +53,7 @@ function newCode() { for (let i = 0; i < 50; i++) { const c = String(1000 + Math
 function newRoom() {
   if (rooms.size >= MAX_ROOMS) return null;
   const code = newCode(); if (!code) return null;
-  const room = { code, phase: 'lobby', members: [], displays: new Set(), hostDisplays: new Set(), cfg: { reveal: true, speed: 1 }, game: null, last: Date.now(), chat: [], chatAt: new Map(), bcast: null };
+  const room = { code, phase: 'lobby', members: [], displays: new Set(), hostDisplays: new Set(), cfg: { reveal: true, speed: 1, mafia: 0 }, game: null, last: Date.now(), chat: [], chatAt: new Map(), bcast: null };
   rooms.set(code, room); return room;
 }
 const send = (ws, o) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
@@ -61,7 +61,7 @@ const humans = (room) => room.members.filter((m) => !m.bot);
 function ensureHost(room) { const hs = humans(room); if (hs.some((m) => m.host)) return; const n = hs.find((m) => m.ws) || hs[0]; if (n) n.host = true; }
 
 function lobbyMsg(room) {
-  return { t: 'lobby', code: room.code, phase: room.phase, cfg: room.cfg, min: MIN_PLAYERS, max: MAX_PLAYERS, players: room.members.map((m, i) => ({ id: i, name: m.name, bot: m.bot, host: !!m.host, connected: m.bot || !!m.ws })) };
+  return { t: 'lobby', code: room.code, phase: room.phase, cfg: room.cfg, min: MIN_PLAYERS, max: MAX_PLAYERS, maxMafia: maxMafia(room.members.length), players: room.members.map((m, i) => ({ id: i, name: m.name, bot: m.bot, host: !!m.host, connected: m.bot || !!m.ws })) };
 }
 function stateFor(room, m) {
   const out = { t: 'state', s: room.game.snapshot(m ? room.members.indexOf(m) : null), code: room.code, tv: room.displays.size, cfg: room.cfg };
@@ -90,7 +90,7 @@ function startGame(room) {
     private: (pid, obj) => { const m = room.members[pid]; if (m) send(m.ws, obj); },
   };
   room.phase = 'playing';
-  room.game = new MafiaGame(room.members.map((m) => ({ name: m.name, bot: m.bot })), { reveal: room.cfg.reveal, speed: room.cfg.speed }, io);
+  room.game = new MafiaGame(room.members.map((m) => ({ name: m.name, bot: m.bot })), { reveal: room.cfg.reveal, speed: room.cfg.speed, mafia: room.cfg.mafia || undefined }, io);
   broadcast(room);
 }
 function resetToLobby(room) {
@@ -196,7 +196,7 @@ wss.on('connection', (ws, req) => {
     const g = room.game, idx = room.members.indexOf(m);
     switch (msg.t) {
       case 'chat': return handleChat(room, m, ws, msg.m);
-      case 'cfg': if (m.host && room.phase === 'lobby') { room.cfg.reveal = msg.reveal !== false; broadcast(room); } return;
+      case 'cfg': if (m.host && room.phase === 'lobby') { room.cfg.reveal = msg.reveal !== false; if (msg.mafia !== undefined) { const v = Number(msg.mafia) | 0; room.cfg.mafia = v >= 1 && v <= 6 ? v : 0; } broadcast(room); } return;
       case 'speed': if (m.host) { room.cfg.speed = SPEEDS[msg.v] != null ? SPEEDS[msg.v] : 1; if (g) g.cfg.speed = room.cfg.speed; broadcast(room); } return;
       case 'addBot': if (m.host && room.phase === 'lobby' && room.members.length < MAX_PLAYERS) { const used = new Set(room.members.map((x) => x.name)); const nm = BOT_NAMES.find((x) => !used.has(x)) || 'آلي ' + room.members.length; room.members.push({ name: nm, bot: true, ws: null }); broadcast(room); } return;
       case 'kick': if (m.host && room.phase === 'lobby') { const t = room.members[Number(msg.id)]; if (t && t !== m) { room.members.splice(room.members.indexOf(t), 1); if (t.ws) { send(t.ws, { t: 'kicked' }); t.ws.room = null; t.ws.member = null; } broadcast(room); } } return;
